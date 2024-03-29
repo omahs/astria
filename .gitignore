@@ -10,3 +10,7 @@ target/
 
 # mac os
 .DS_Store
+
+# vitepress
+docs/.vitepress/dist
+docs/.vitepress/cache
