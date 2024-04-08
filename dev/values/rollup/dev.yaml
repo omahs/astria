@@ -13,5 +13,10 @@ config:
 celestia-node:
   enabled: false
 
+evm-faucet:
+  enabled: true
+  ingress:
+    enabled: true
+
 storage:
   enabled: false

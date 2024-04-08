@@ -21,7 +21,7 @@ images:
     devTag: latest
 
   # Rollup faucet
-  faucet: "ghcr.io/astriaorg/ria-faucet:0.0.1"
+  
 
   # Pertaining to deploying blockscout block explorer
   blockscout:
@@ -165,6 +165,9 @@ celestia-node:
     # # The custom info below must be grabbed from the custom network bridge on startup
     # customInfo: "<GENESIS_HASH>:<BRIDGE_MULTIADDRESS>"
 
+evm-faucet:
+  enabled: false
+
 # When deploying in a production environment should use a secret provider
 # This is configured for use with GCP, need to set own resource names
 # and keys
@@ -217,24 +220,6 @@ ingress:
         name: "{{ .Values.config.rollup.name }}-evm-service"
         port:
           name: ws-rpc-svc
-      annotations: {}
-        # kubernetes.io/ingress.class: nginx
-        # kubernetes.io/tls-acme: "true"
-      labels: {}
-      tls: {}
-      #  - secretName: chart-example-tls
-      #    hosts:
-      #      - chart-example.local
-    faucet:
-      enabled: true
-      hosts:
-        - faucet.{{ .Values.config.rollup.name }}.{{ .Values.ingress.hostname }}
-      path: /
-      pathType: Prefix
-      service:
-        name: "{{ .Values.config.rollup.name }}-faucet-service"
-        port:
-          name: faucet-svc
       annotations: {}
         # kubernetes.io/ingress.class: nginx
         # kubernetes.io/tls-acme: "true"
@@ -304,7 +289,6 @@ ports:
   wsRPC: 8546
   executionGRPC: 50051
   gossipnet: 2451
-  faucet: 8080
   blockscout: 4000
   metrics: 6060
   conductorMetrics: 9000
