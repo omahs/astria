@@ -76,6 +76,7 @@ use crate::{
     component::Component as _,
     genesis::GenesisState,
     ibc::component::IbcComponent,
+    metrics_init,
     proposal::{
         block_size_constraints::BlockSizeConstraints,
         commitment::{
@@ -291,6 +292,7 @@ impl App {
                 self.executed_proposal_hash = process_proposal.hash;
                 return Ok(());
             }
+            metrics::gauge!(metrics_init::PROCESS_PROPOSAL_SKIPPED_PROPOSAL).increment(1);
             debug!(
                 "our validator address was set but we're not the proposer, so our previous \
                  proposal was skipped, executing block"
@@ -325,6 +327,9 @@ impl App {
             .get_block_deposits()
             .await
             .context("failed to get block deposits in process_proposal")?;
+        #[allow(clippy::cast_precision_loss)]
+        metrics::gauge!(metrics_init::PROCESS_PROPOSAL_DEPOSIT_TRANSACTIONS)
+            .set(deposits.len() as f64);
 
         let GeneratedCommitments {
             rollup_datas_root: expected_rollup_datas_root,
@@ -372,6 +377,10 @@ impl App {
 
             // don't include tx if it would make the cometBFT block too large
             if !block_size_constraints.cometbft_has_space(tx.len()) {
+                metrics::counter!(
+                    metrics_init::PREPARE_PROPOSAL_EXCLUDED_TRANSACTIONS_COMETBFT_SPACE
+                )
+                .increment(1);
                 debug!(
                     transaction_hash = %telemetry::display::base64(&tx_hash),
                     block_size_constraints = %json(&block_size_constraints),
@@ -385,6 +394,10 @@ impl App {
             // try to decode the tx
             let signed_tx = match signed_transaction_from_bytes(&tx) {
                 Err(e) => {
+                    metrics::counter!(
+                        metrics_init::PREPARE_PROPOSAL_EXCLUDED_TRANSACTIONS_DECODE_FAILURE
+                    )
+                    .increment(1);
                     debug!(
                         error = AsRef::<dyn std::error::Error>::as_ref(&e),
                         "failed to decode deliver tx payload to signed transaction; excluding it",
@@ -404,6 +417,10 @@ impl App {
                 .fold(0usize, |acc, seq| acc + seq.data.len());
 
             if !block_size_constraints.sequencer_has_space(tx_sequence_data_bytes) {
+                metrics::counter!(
+                    metrics_init::PREPARE_PROPOSAL_EXCLUDED_TRANSACTIONS_SEQUENCER_SPACE
+                )
+                .increment(1);
                 debug!(
                     transaction_hash = %telemetry::display::base64(&tx_hash),
                     block_size_constraints = %json(&block_size_constraints),
@@ -417,6 +434,10 @@ impl App {
             // execute the tx and include it if it succeeds
             let tx_hash = self.execute_and_store_signed_tx(&signed_tx).await;
             if let Some(Err(_e)) = self.execution_result.get(&tx_hash) {
+                metrics::counter!(
+                    metrics_init::PREPARE_PROPOSAL_EXCLUDED_TRANSACTIONS_FAILED_EXECUTION
+                )
+                .increment(1);
                 debug!(
                     transaction_hash = %telemetry::display::base64(&tx_hash),
                     "failed to execute transaction, not including in block"
@@ -434,6 +455,9 @@ impl App {
             }
         }
 
+        #[allow(clippy::cast_precision_loss)]
+        metrics::gauge!(metrics_init::PREPARE_PROPOSAL_EXCLUDED_TRANSACTIONS)
+            .set(excluded_tx_count as f64);
         if excluded_tx_count > 0 {
             info!(
                 excluded_tx_count = excluded_tx_count,
