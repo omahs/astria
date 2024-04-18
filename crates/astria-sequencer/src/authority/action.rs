@@ -48,7 +48,7 @@ impl ActionHandler for tendermint::validator::Update {
                 bail!("cannot remove a non-existing validator");
             }
             // check that this is not the only validator, cannot remove the last one
-            ensure!(validator_set.len() != 0, "cannot remove the last validator");
+            ensure!(validator_set.len() != 1, "cannot remove the last validator");
         }
         Ok(())
     }
