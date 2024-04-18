@@ -321,6 +321,9 @@ impl App {
             .execute_block_data(txs)
             .await
             .context("transactions failed to decode and execute")?;
+        #[allow(clippy::cast_precision_loss)]
+        metrics::histogram!(metrics_init::PROCESS_PROPOSAL_TRANSACTIONS)
+            .record(signed_txs.len() as f64);
 
         let deposits = self
             .state

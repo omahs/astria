@@ -5,6 +5,7 @@
 use metrics::{
     describe_counter,
     describe_gauge,
+    describe_histogram,
     Unit,
 };
 
@@ -91,10 +92,21 @@ pub fn register() {
     describe_counter!(
         CHECK_TX_REMOVED_ACCOUNT_BALANCE,
         Unit::Count,
-        "The number of transactions thathave been removed from the mempool due to having not \
+        "The number of transactions that have been removed from the mempool due to having not \
          enough account balance"
     );
+
+    describe_histogram!(
+        PROCESS_PROPOSAL_TRANSACTIONS,
+        Unit::Count,
+        "The number of transactions in the process_proposal phase"
+    );
 }
+
+// We configure buckets for manually, in order to ensure Prometheus metrics are structured as a
+// Histogram, rather than as a Summary. These values are loosely based on guesses
+// and may need to be updated over time.
+pub const HISTOGRAM_BUCKETS: &[f64; 5] = &[25.0, 50.0, 100.0, 200.0, 1000.0];
 
 pub const PREPARE_PROPOSAL_EXCLUDED_TRANSACTIONS_DECODE_FAILURE: &str = concat!(
     env!("CARGO_CRATE_NAME"),
@@ -125,6 +137,9 @@ pub const PROCESS_PROPOSAL_DEPOSIT_TRANSACTIONS: &str = concat!(
     env!("CARGO_CRATE_NAME"),
     "_process_proposal_deposit_transactions"
 );
+
+pub const PROCESS_PROPOSAL_TRANSACTIONS: &str =
+    concat!(env!("CARGO_CRATE_NAME"), "_process_proposal_transactions");
 
 pub const PROCESS_PROPOSAL_SKIPPED_PROPOSAL: &str = concat!(
     env!("CARGO_CRATE_NAME"),
