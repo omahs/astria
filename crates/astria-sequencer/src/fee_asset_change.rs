@@ -34,6 +34,26 @@ impl ActionHandler for FeeAssetChangeAction {
             authority_sudo_address == from,
             "unauthorized address for fee asset change"
         );
+        match self {
+            FeeAssetChangeAction::Addition(asset) => {
+                ensure!(
+                    !state
+                        .is_allowed_fee_asset(*asset)
+                        .await
+                        .context("failed to check if asset is already a fee asset")?,
+                    "asset is already a fee asset"
+                );
+            }
+            FeeAssetChangeAction::Removal(asset) => {
+                ensure!(
+                    state
+                        .is_allowed_fee_asset(*asset)
+                        .await
+                        .context("failed to check if asset is already a fee asset")?,
+                    "asset is not a fee asset"
+                );
+            }
+        }
         Ok(())
     }
 

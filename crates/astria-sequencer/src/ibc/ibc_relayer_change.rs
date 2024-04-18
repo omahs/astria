@@ -32,6 +32,26 @@ impl ActionHandler for IbcRelayerChangeAction {
             ibc_sudo_address == from,
             "unauthorized address for IBC relayer change"
         );
+        match self {
+            IbcRelayerChangeAction::Addition(address) => {
+                ensure!(
+                    !state
+                        .is_ibc_relayer(address)
+                        .await
+                        .context("failed to check if address is an IBC relayer")?,
+                    "address is already an IBC relayer"
+                );
+            }
+            IbcRelayerChangeAction::Removal(address) => {
+                ensure!(
+                    state
+                        .is_ibc_relayer(address)
+                        .await
+                        .context("failed to check if address is an IBC relayer")?,
+                    "address is not an IBC relayer, cannot remove"
+                );
+            }
+        }
         Ok(())
     }
 
