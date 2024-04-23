@@ -139,9 +139,6 @@ celestia-node:
     # # The custom info below must be grabbed from the custom network bridge on startup
     # customInfo: "<GENESIS_HASH>:<BRIDGE_MULTIADDRESS>"
 
-evm-faucet:
-  enabled: false
-
 # When deploying in a production environment should use a secret provider
 # This is configured for use with GCP, need to set own resource names
 # and keys
