@@ -33,6 +33,8 @@ chainId: "celestia-local-0"
 keyringBackend: "test"
 validatorKeyName: "validator"
 validatorMnemonic: connect soon random stable toddler tired glove drastic comfort donor struggle island cactus pole shell alpha taste able story business cross dismiss book brass
+relayerKeyName: relayer
+relayerMnemonic: whale yellow lemon hope electric tattoo proof eagle swift bind silly frame burger cause light fresh attitude reform dance welcome derive toilet convince across
 # Genesis amount
 coins: "10000000000000000000000000utia"
 # Staking amount

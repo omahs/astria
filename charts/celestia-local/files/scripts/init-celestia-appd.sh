@@ -22,6 +22,18 @@ celestia-appd add-genesis-account \
   --home "$home_dir" \
   "$coins"
 
+echo "$relayer_mnemonic" | celestia-appd keys add \
+  "$relayer_key_name" \
+  --home "$home_dir" \
+  --keyring-backend="$keyring_backend" \
+  --recover
+
+relayer_key=$(celestia-appd keys show "$relayer_key_name" -a --keyring-backend="$keyring_backend" --home "$home_dir")
+celestia-appd add-genesis-account \
+  "$relayer_key" \
+  --home "$home_dir" \
+  "$coins"
+
 celestia-appd gentx \
   "$validator_key_name" \
   "$validator_stake" \
