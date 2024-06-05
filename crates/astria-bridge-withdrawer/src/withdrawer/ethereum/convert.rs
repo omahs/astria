@@ -94,8 +94,13 @@ fn event_to_bridge_unlock(
         block_number,
         transaction_hash,
     };
+    let destination_address: [u8; 20] = event
+        .destination_chain_address
+        .as_bytes()
+        .try_into()
+        .expect("destination address must be 20 bytes");
     let action = BridgeUnlockAction {
-        to: event.sender.to_fixed_bytes().into(),
+        to: Address::from(destination_address),
         amount: event
             .amount
             .as_u128()
