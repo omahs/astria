@@ -267,8 +267,8 @@ impl AddressError {
         })
     }
 
-    fn fields_are_mutually_exclusive() -> Self {
-        Self(AddressErrorKind::FieldsAreMutuallyExclusive)
+    fn fields_do_not_match() -> Self {
+        Self(AddressErrorKind::FieldsDoNotMatch)
     }
 
     fn incorrect_address_length(received: usize) -> Self {
@@ -276,20 +276,26 @@ impl AddressError {
             received,
         })
     }
+    
+    fn no_valid_address() -> Self {
+        Self(AddressErrorKind::NoValidAddress)
+    }
 }
 
 #[derive(Debug, thiserror::Error, PartialEq)]
 enum AddressErrorKind {
     #[error("failed decoding provided bech32m string")]
     Bech32mDecode { source: bech32::DecodeError },
-    #[error("fields `inner` and `bech32m` are mutually exclusive, only one can be set")]
-    FieldsAreMutuallyExclusive,
+    #[error("fields `inner` and `bech32m` must match if both are set")]
+    FieldsDoNotMatch,
     #[error("expected an address of 20 bytes, got `{received}`")]
     IncorrectAddressLength { received: usize },
     #[error("the provided prefix was not a valid bech32 human readable prefix")]
     InvalidPrefix {
         source: bech32::primitives::hrp::Error,
     },
+    #[error("one of fields must decode to an address")]
+    NoValidAddress,
 }
 
 pub struct NoBytes;
@@ -468,7 +474,11 @@ impl Address {
     ///
     /// # Errors
     ///
-    /// Returns an error if the account buffer was not 20 bytes long.
+    /// Returns an error if:
+    /// + the `inner` account bytes was not 20 bytes long
+    /// + the address fails to be derived from `bech32m` field
+    /// + both `inner` and `bech32m` fields are set and do not match
+    /// + neither `inner` nor `bech32m` fields are set
     pub fn try_from_raw(raw: &raw::Address) -> Result<Self, AddressError> {
         // allow: `Address::inner` field is deprecated, but we must still check it
         #[allow(deprecated)]
@@ -476,16 +486,29 @@ impl Address {
             inner,
             bech32m,
         } = raw;
-        if bech32m.is_empty() {
-            return Self::builder()
-                .slice(inner.as_ref())
-                .prefix(ASTRIA_ADDRESS_PREFIX)
-                .try_build();
+        let from_bytes: Option<Address> = if inner.is_empty() {
+            None
+        } else {
+            let bytes = inner.as_ref();
+            Some(Address::builder().slice(bytes).prefix(ASTRIA_ADDRESS_PREFIX).try_build()?)
+        };
+        let from_bech32m: Option<Address> = if bech32m.is_empty() {
+           None
+        } else {
+            Some(Address::try_from_bech32m(bech32m)?)
+        };
+        
+        match (from_bytes, from_bech32m) {
+            (Some(byte_address), None) => Ok(byte_address),
+            (None, Some(bech32m_address)) => Ok(bech32m_address),
+            (Some(byte_address), Some(bech32m_address)) => {
+                if byte_address == bech32m_address {
+                    return Ok(byte_address);
+                }
+                Err(AddressError::fields_do_not_match())
+            },
+            (None, None) => Err(AddressError::no_valid_address()),
         }
-        if inner.is_empty() {
-            return Self::try_from_bech32m(bech32m);
-        }
-        Err(AddressError::fields_are_mutually_exclusive())
     }
 }
 
@@ -619,7 +642,7 @@ mod tests {
             )
             .unwrap(),
         };
-        let expected = AddressErrorKind::FieldsAreMutuallyExclusive;
+        let expected = AddressErrorKind::FieldsDoNotMatch;
         let actual = Address::try_from_raw(&proto)
             .expect_err("returned a valid address where it should have errored");
         assert_eq!(expected, actual.0);
